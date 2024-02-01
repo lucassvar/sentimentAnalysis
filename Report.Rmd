@@ -17,7 +17,7 @@ Analyzing sentiments involves extracting diverse opinions, categorized by polari
 
 # Model
 
-```{undefined include=FALSE}
+```{r undefined include=FALSE}
 library(tidytext)
 library(janeaustenr)
 library(dplyr)
