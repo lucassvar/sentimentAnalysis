@@ -1,0 +1,140 @@
+---
+title: "Sentiment Analysis with R"
+author: "Lucas Varela"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Sentiment Analysis with R
+
+The goal is to create a model which allow us to categorize words based on their emotions, that is weather they are positive or negative, while at the same time measuring the magnitude of each one.
+
+Analyzing sentiments involves extracting diverse opinions, categorized by polarities such as positive, negative, or neutral. This process, also referred to as opinion mining and polarity detection, discerns the nature of opinions within documents, websites, social media feeds, etc. It's a classification method that sorts data into various classes, which can be binary (positive or negative) or multi-class (happy, sad, angry, etc.).
+
+# Model
+
+```{undefined include=FALSE}
+library(tidytext)
+library(janeaustenr)
+library(dplyr)
+library(textdata)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(reshape2)
+library(wordcloud)
+```
+
+In this project, we'll conduct sentiment analysis using R. The dataset, sourced from the 'janeaustenR' package, will serve as our foundation. To facilitate sentiment analysis, we'll leverage the 'tidytext' package, which includes sentiment lexicons found in the 'sentiments' dataset.
+
+```{r echo=TRUE}
+glimpse(sentiments)
+```
+
+We will use three general lexicons:
+
+-   bing
+
+-   loughran
+
+-   AFINN
+
+These three lexicons utilize unigrams, which are single items or words extracted from textual data in a type of n-gram model. The AFINN lexicon assigns scores to words on a scale from -5 to 5, with an increase in negativity indicating a negative sentiment and an increase in positivity corresponding to a positive sentiment. In contrast, the bing lexicon classifies sentiment into a binary category of negative or positive. The Loughran model specializes in analyzing shareholder reports.
+
+For our project, we'll employ the bing lexicons to extract sentiments from our data, and we can retrieve these lexicons using the **`get_sentiments()`** function:
+
+```{undefined echo=TRUE}
+get_sentiments("loughran")
+```
+
+# Analysis with the Inner Join
+
+The 'janeaustenr' package furnishes us with textual data from books written by Jane Austen. Leveraging 'tidytext,' we can conduct effective text analysis on our data. To structure the text of our books systematically, we'll employ the `unnest_tokens()` function to convert it into a tidy format.
+
+```{r echo=TRUE}
+tidy_data <- austen_books() %>%
+ group_by(book) %>%
+ mutate(linenumber = row_number(),
+   chapter = cumsum(str_detect(text, regex("^chapter [\\divxlc]", 
+                          ignore_case = TRUE)))) %>%
+ungroup() %>%
+unnest_tokens(word, text)
+```
+
+After tidying our text, with each row representing a single word, we'll utilize the "bing" lexicon. Implementing the `filter()` function, we'll isolate the words associated with joy from the book "Sense and Sensibility" to construct our sentiment analysis model.
+
+```{r echo=TRUE}
+positive_senti <- get_sentiments("bing") %>%
+ filter(sentiment == "positive")
+
+tidy_data %>%
+ filter(book == "Emma") %>%
+ semi_join(positive_senti) %>%
+ count(word, sort = TRUE)
+```
+
+After examining our previous outcome, which revealed numerous positive words such as "well" "good" and "great", we'll proceed to organize our data further.
+
+Employing the `spread()` function, we'll categorize our data into distinct columns for positive and negative sentiments. Subsequently, using the `mutate()` function, we'll calculate the overall sentiment, representing the difference between positive and negative sentiment.
+
+```{r echo=TRUE}
+Emma_sentiment <- tidy_data %>%
+  inner_join(bing, relationship = "many-to-many") %>%
+  count(book = "Emma" , index = linenumber %/% 80, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+glimpse(Emma_sentiment)
+```
+
+Now we will visualize the words present in the book “Emma” based on their corresponding positive and negative scores:
+
+```{r}
+ggplot(Emma_sentiment, aes(index, sentiment, fill = book)) +
+ geom_bar(stat = "identity", show.legend = TRUE) +
+ facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+
+To identify the most frequently occurring positive and negative words in the novel, we'll proceed with the counting process.
+
+```{r echo=TRUE, warning=FALSE}
+counting_words <- tidy_data %>%
+ inner_join(bing) %>%
+ count(word, sentiment, sort = TRUE)
+
+head(counting_words)
+```
+
+In the upcoming step, we'll visualize our sentiment scores by plotting them along an axis labeled with both positive and negative words. The ggplot() function will be employed to create a visual representation of our data based on their scores.
+
+```{r}
+counting_words %>%
+ filter(n > 150) %>%
+ mutate(n = ifelse(sentiment == "negative", -n, n)) %>%
+ mutate(word = reorder(word, n)) %>%
+ ggplot(aes(word, n, fill = sentiment))+
+ geom_col() +
+ coord_flip() +
+ labs(y = "Sentiment Score")
+```
+
+For the concluding visualization, we'll generate a word cloud to illustrate the most frequently occurring positive and negative words. Specifically, we'll utilize the `comparison.cloud()` function to plot both negative and positive words in a unified word cloud.
+
+```{r echo=TRUE, warning=FALSE}
+tidy_data %>%
+ inner_join(bing) %>%
+ count(word, sentiment, sort = TRUE) %>%
+ acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+ comparison.cloud(colors = c("red", "dark green"),
+          max.words = 100)
+```
+
+The word cloud serves as an effective tool to visually comprehend the distinct groups of data categorized by their sentiments, both negative and positive. This allows us to gain insights into the different sentiments present in the data.
+
+
+# Conclusion
+Tis sentiment analysis project successfully leveraged R and various lexicons to categorize words based on their emotional tones in Jane Austen's novel "Emma." The analysis involved the use of the 'tidytext' package, exploration of different sentiment lexicons like bing, loughran, and AFINN, and visualization techniques such as bar plots and word clouds. The results provided a nuanced understanding of sentiments, revealing the most frequently occurring positive and negative words. The visualizations, including bar plots and word clouds, offer a comprehensive view of sentiment distribution throughout the text, aiding in the interpretation of emotional tones within the novel.
