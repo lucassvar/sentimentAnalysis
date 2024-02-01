@@ -9,7 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(engine = 'R')
 ```
 
-# Sentiment Analysis with R
+# Introduction
 
 The goal is to create a model which allow us to categorize words based on their emotions, that is weather they are positive or negative, while at the same time measuring the magnitude of each one.
 
