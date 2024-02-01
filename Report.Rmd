@@ -6,7 +6,7 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(engine = 'R')
 ```
 
 # Sentiment Analysis with R
@@ -17,7 +17,7 @@ Analyzing sentiments involves extracting diverse opinions, categorized by polari
 
 # Model
 
-```{r undefined include=FALSE}
+```{r include=FALSE}
 library(tidytext)
 library(janeaustenr)
 library(dplyr)
@@ -82,6 +82,7 @@ After examining our previous outcome, which revealed numerous positive words suc
 Employing the `spread()` function, we'll categorize our data into distinct columns for positive and negative sentiments. Subsequently, using the `mutate()` function, we'll calculate the overall sentiment, representing the difference between positive and negative sentiment.
 
 ```{r echo=TRUE}
+bing <- get_sentiments("bing")
 Emma_sentiment <- tidy_data %>%
   inner_join(bing, relationship = "many-to-many") %>%
   count(book = "Emma" , index = linenumber %/% 80, sentiment) %>%
